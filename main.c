@@ -4,26 +4,11 @@
 
 #include "chacha20.h"
 
-void printBits(unsigned int num) {
-    int bit;
 
-    // Size of an unsigned int in bits
-    int size = sizeof(unsigned int) * 8;
-
-    // Iterate through each bit in the integer
-    for (int i = size - 1; i >= 0; i--) {
-        // Extract the i-th bit using bitwise AND
-        bit = (num >> i) & 1;
-
-        // Print the bit
-        printf("%d", bit);
-
-        // Add a space for better readability
-        if (i % 8 == 0) {
-            printf(" ");
-        }
+void printmsg(unsigned char const msg[], int const len){
+    for (int i=0; i<len; i+=1){
+        printf("%02x ", msg[i]);
     }
-
     printf("\n");
 }
 
@@ -33,9 +18,6 @@ int main(int argc, char *argv[]){
         return 1;
     }
 
-    char const *inputfilename = argv[3];
-    char const *outputfilename = argv[4];
-
     // Check nonce length
     char const *nonce = argv[2];
     size_t nl = strlen(nonce);
@@ -44,43 +26,66 @@ int main(int argc, char *argv[]){
         return 1;
     }
 
-    // Read key
+    // Read key from file
     char const *keyfilename = argv[1];
     FILE *keyfile;
     keyfile = fopen(keyfilename, "rb");
     if (keyfile == NULL) {
-        perror("Error opening file");
+        perror("Error opening keyfile");
         return 1;
     }
-    char key[64];
+    char key[32];
     int keyLen = 0;
     char byte = fgetc(keyfile);
     while (byte != EOF){
-        printf("%02x ", byte);
         key[keyLen] = byte;
         keyLen += 1;
         byte = fgetc(keyfile);
-        
     }
     fclose(keyfile);
-    if (keyLen != 64){
-        fprintf(stderr, "Key must be 64-byte long, not %d\n", keyLen);
+    if (keyLen != 32){
+        fprintf(stderr, "Key must be 32-byte long, not %d\n", keyLen);
         return 1;
     }
 
-    unsigned int a, b, c, d; 
-    a = 0x11111111;
-    b = 0x01020304;
-    c = 0x9b8d6f43;
-    d = 0x01234567;
+    // Encrypt / Decrypt
+    char const *inputfilename = argv[3];
+    FILE *inputfile;
+    inputfile = fopen(inputfilename, "rb");
+    if (inputfile == NULL){
+        perror("Error opening inputfile.");
+    }
+    char const *outputfilename = argv[4];
+    FILE *outputfile;
+    outputfile = fopen(outputfilename, "wb");
+    if (inputfile == NULL){
+        perror("Error opening outputfile.");
+    }
 
-    printf("a = 0x%x\nb = 0x%x\nc = 0x%x\nd = 0x%x\n", a, b, c, d);
-
-    quarterRound(&a, &b, &c, &d);
-    printf("then\n");
-    printf("a = 0x%x\nb = 0x%x\nc = 0x%x\nd = 0x%x\n", a, b, c, d);
-
-    unsigned int state[16];
-
+    unsigned int counter = 1;
+    unsigned int *state = malloc(16*sizeof(*state));
+    unsigned char msg[64];
+    int len = 0;
+    byte = fgetc(inputfile);
+    while(byte != EOF){
+        msg[len] = byte;
+        len += 1;
+        if (len == 64){
+            chacha20_block(state, counter, (unsigned char *)key, nonce);
+            XORStateMsg(state, msg);
+            fwrite(msg, sizeof(*msg), len, outputfile);
+            // printmsg(msg, len);
+            len = 0;
+            counter += 1;
+        }
+        byte = fgetc(inputfile);
+    }
+    // Handle last block
+    if (len != 0){
+        chacha20_block(state, counter, (unsigned char *)key, nonce);
+        XORStateMsg(state, msg);
+        // printmsg(msg, len);
+        fwrite(msg, sizeof(*msg), len, outputfile);
+    }
     return 0;
 }
