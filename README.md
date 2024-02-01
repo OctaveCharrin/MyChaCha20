@@ -25,8 +25,8 @@ To encrypt/decrypt a file using ChaCha20, run the following command:
 
 For example, you can encrypt and decrypt the text file `sunscreen.txt` using:
 ```bash
-./chacha20 keyfile 000000000000004a00000000 sunscreen.txt my_ciphertext.txt # encryption
-./chacha20 keyfile 000000000000004a00000000 my_ciphertext.txt my_sunscreen.txt # decryption
+./chacha20 keyfile 000000000000004a00000000 sunscreen.txt my_ciphertext.bin # encryption
+./chacha20 keyfile 000000000000004a00000000 my_ciphertext.bin my_sunscreen.txt # decryption
 ```
 
 The content of `sunscreen.txt` and `my_sunscreen.txt` should be the same.
